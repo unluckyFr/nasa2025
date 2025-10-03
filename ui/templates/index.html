@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Air Quality Forecast</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 2rem; max-width: 960px; }
+    header { margin-bottom: 1rem; }
+    form { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    input, button { padding: .5rem .75rem; font-size: 1rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; }
+    img { max-width: 100%; border: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #eee; padding: .5rem; text-align: right; }
+    th { background: #fafafa; }
+    td:first-child, th:first-child { text-align: left; }
+    .muted { color: #666; }
+    code { background: #f6f8fa; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Air Quality Forecasting App</h2>
+    <p class="muted">NASA Space Apps Challenge demo — integrates satellite, ground, and weather data (with sample fallbacks).</p>
+  </header>
+  <form id="qform">
+    <label>Location <input id="loc" name="location" value="Boston" /></label>
+    <label>Date <input id="dt" name="date" type="date" /></label>
+    <button type="submit">Get Forecast</button>
+  </form>
+
+  <div id="output" class="grid">
+    <div class="card">
+      <h3>Current</h3>
+      <pre id="current"></pre>
+    </div>
+    <div class="card">
+      <h3>Alerts</h3>
+      <pre id="alerts"></pre>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <h3>48h Forecast</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>PM2.5</th>
+          <th>NO2</th>
+          <th>O3</th>
+          <th>AQI</th>
+        </tr>
+      </thead>
+      <tbody id="forecast-body"></tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:1rem">
+    <img id="plot" src="/plot.png?location=Boston" alt="Plot" />
+  </div>
+
+  <script>
+    const form = document.getElementById('qform');
+    const currentEl = document.getElementById('current');
+    const alertsEl = document.getElementById('alerts');
+    const plotEl = document.getElementById('plot');
+    const forecastBody = document.getElementById('forecast-body');
+
+    function renderForecastRows(rows) {
+      forecastBody.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const cells = [r.date, r.PM25, r.NO2, r.O3, r.AQI];
+        cells.forEach((c, i) => {
+          const td = document.createElement('td');
+          td.textContent = c == null ? '' : c;
+          tr.appendChild(td);
+        });
+        forecastBody.appendChild(tr);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const location = document.getElementById('loc').value || 'Boston';
+      const date = document.getElementById('dt').value;
+      const url = new URL('/api/aqi', window.location.origin);
+      url.searchParams.set('location', location);
+      if (date) url.searchParams.set('date', date);
+
+      const res = await fetch(url);
+      const data = await res.json();
+      currentEl.textContent = JSON.stringify(data.current, null, 2);
+      alertsEl.textContent = JSON.stringify(data.alerts, null, 2);
+      renderForecastRows(data.forecast || []);
+
+      const plotUrl = new URL('/plot.png', window.location.origin);
+      plotUrl.searchParams.set('location', location);
+      if (date) plotUrl.searchParams.set('date', date);
+      plotEl.src = plotUrl.toString() + '&_=' + Date.now();
+    });
+  </script>
+</body>
+</html>
